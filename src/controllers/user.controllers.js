@@ -65,10 +65,90 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     return res.status(201).json(
-        new ApiResponse(200, createdUser, "User registered Successfully")
+        new ApiResponse(201, createdUser, "User registered Successfully")
     );
-})
+});
+
+/*
+Controller for user login.
+Destructure username/email, password from req body and validate non empty data.
+Validate if user exists with username/email.
+Verify user password.
+Generate access and refresh token.
+Store refresh token in users document.
+Store tokens in cookies and send them as response as well.
+*/
+
+const login = asyncHandler(async (req, res) => {
+    const { username = null, email = null, password } = req.body;
+
+    if (!username && !email) {
+        throw new ApiError(400, "Provide email or username");
+    }
+
+    if (!password) {
+        throw new ApiError(401, "Invalid credentials");
+    }
+
+    const user = await User.findOne({
+        $or: [
+            { username }, { email }
+        ]
+    },
+    { username: 1, email: 1, password:1, _id: 0 }
+    );
+
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password);
+
+    if(!isPasswordValid) throw new ApiError(401, "UNAUOTHORIZED");
+
+    const { accessToken, refreshToken } = await generateTokens();
+
+    const options = {
+        secure: true,
+        httpOnly: true,
+    }
+
+    return res.status(200)
+    .cookie('accessToken', accessToken, options)
+    .cookie('refreshToken', refreshToken, options)
+    .json(new ApiResponse(200, "success", { accessToken, refreshToken}));
+});
+
+/*
+Controller to logout user.
+Fetch userId(_id) from req and check if user exist.
+Remove the cookies and logout the user.
+*/
+const logout = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $unset: {
+                refreshToken: 1,
+            }
+        },
+    );
+
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    return res.status(200).
+    clearCookie("accessToken", options).
+    clearCookie("refreshToken", options).
+    json(new ApiResponse(200, "User logout."));
+
+
+
+});
 
 module.exports = {
-    registerUser,
-}
+        registerUser,
+        login,
+    }
