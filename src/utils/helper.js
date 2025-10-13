@@ -4,7 +4,7 @@ const User = require("../db/Schemas/user.model");
 // Helper method to generate access & refresh tokens
 const generateTokens = async (userId) => {
     try{
-        const user = await User.findById(userId).select({email:1}).lean();
+        const user = await User.findById(userId).select({email:1});
 
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
@@ -15,4 +15,8 @@ const generateTokens = async (userId) => {
     }catch(error){
         throw new ApiError(500, `Issue in generating tokens, ${error}`);
     }
+}
+
+module.exports = {
+    generateTokens,
 }

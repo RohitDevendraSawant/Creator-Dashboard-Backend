@@ -5,6 +5,7 @@ const User = require("../db/Schemas/user.model");
 const ApiError = require("../utils/ApiError");
 const ApiResponse = require("../utils/ApiResponse");
 const uploadToCloudinary = require("../utils/cloudinary");
+const { generateTokens } = require('../utils/helper');
 
 /*
 Controller to handle user registration.
@@ -95,7 +96,7 @@ const login = asyncHandler(async (req, res) => {
             { username }, { email }
         ]
     },
-    { username: 1, email: 1, password:1, _id: 0 }
+    { username: 1, email: 1, password:1 }
     );
 
     if(!user){
@@ -106,7 +107,7 @@ const login = asyncHandler(async (req, res) => {
 
     if(!isPasswordValid) throw new ApiError(401, "UNAUOTHORIZED");
 
-    const { accessToken, refreshToken } = await generateTokens();
+    const { accessToken, refreshToken } = await generateTokens(user._id);
 
     const options = {
         secure: true,
@@ -122,6 +123,7 @@ const login = asyncHandler(async (req, res) => {
 /*
 Controller to logout user.
 Fetch userId(_id) from req and check if user exist.
+Unset the refresh token from users document.
 Remove the cookies and logout the user.
 */
 const logout = asyncHandler(async (req, res) => {
@@ -143,12 +145,10 @@ const logout = asyncHandler(async (req, res) => {
     clearCookie("accessToken", options).
     clearCookie("refreshToken", options).
     json(new ApiResponse(200, "User logout."));
-
-
-
 });
 
 module.exports = {
         registerUser,
         login,
+        logout,
     }
