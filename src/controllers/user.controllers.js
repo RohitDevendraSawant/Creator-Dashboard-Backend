@@ -19,7 +19,7 @@ Return the response by removing hashed password and refresh token.
 const registerUser = asyncHandler(async (req, res) => {
     const { username, email, fullName, password } = req.body;
 
-    if ([username, email, fullName, password].some((field) => field.trim().length() === 0)) {
+    if ([username, email, fullName, password].some((field) => field?.trim()?.length === 0)) {
         throw new ApiError(400, "Please enter all the required fields.");
     }
 
@@ -35,7 +35,7 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    const coverImageLocalPath = req.files?.cover_image[0]?.path;
 
     if (!avatarLocalPath || !coverImageLocalPath) throw new ApiError(400, "Avatar file is required");
 
