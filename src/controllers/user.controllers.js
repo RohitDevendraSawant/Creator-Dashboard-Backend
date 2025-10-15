@@ -7,6 +7,8 @@ const ApiResponse = require("../utils/ApiResponse");
 const uploadToCloudinary = require("../utils/cloudinary");
 const { generateTokens } = require('../utils/helper');
 
+const jwt = require("jsonwebtoken");
+
 /*
 Controller to handle user registration.
 Accept username, email, fullName, password from req body.
@@ -147,8 +149,156 @@ const logout = asyncHandler(async (req, res) => {
     json(new ApiResponse(200, "User logout."));
 });
 
+/* Conroller to refresh access token using refresh token.
+Accept refresh token from req cookies or req header.
+Validate if refresh token is present.
+Check if user exist with the refresh token.
+Generate new access and refresh tokens.
+Update the new refresh token in users document.
+Set the tokens in cookies and return as response as well.
+*/
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    try {
+        const incomingToken = req.cookies?.refreshToken || req.header('Authoriation')?.replace("Bearer ", "");
+    
+        if(!incomingToken) throw new ApiError(401, "Unauthorized request");
+    
+        const decodedToken = await jwt.verify(incomingToken, process.env.REFRESH_TOKEN_SECRET);
+        const user = await User.findOne({ _id: decodedToken._id }).select({ username: 1, email: 1, refreshToken: 1});
+    
+        if(!user) throw new ApiError(401, "Invalid refresh token");
+    
+        if(user.refreshToken !== incomingToken) throw new ApiError(401, "Invalid refresh token");
+    
+        const { accessToken, refreshToken } = await generateTokens(user._id);
+    
+        const options = {
+            secure: true,
+            httpOnly: true,
+        }
+    
+        return res.status(200)
+        .cookie('accessToken', accessToken, options)
+        .cookie('refreshToken', refreshToken, options)
+        .json(new ApiResponse(200, "success", { accessToken, refreshToken}, "Tokens refreshed successfully"));
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while refreshing access token", error);
+    }
+});
+
+/*
+Controller tp get user profile.
+Fetch userId from req and get user details from db.
+Return the user details after removing password and refresh token.
+*/
+const getUserProfile = asyncHandler(async(req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select("-password -refreshToken").lean();
+        return res.status(200).json(new ApiResponse(200, user, "User profile fetched successfully"));
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while fetching user profile", error);
+    }
+});
+
+/*
+Controller to change user password.
+Fetch oldPassword and newPassword from req body.
+Validate non empty passwords.
+Fetch userId from req and get user details from db.
+Validate old password.
+Update new password and save the user document.
+Return success response.
+*/
+const changePassword = asyncHandler(async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body; 
+        
+        if (!oldPassword || !newPassword) {
+            throw new ApiError(400, "Please provide both old and new passwords.");
+        }
+    
+        const user = await User.findById(req.user._id).select({ password: 1});
+    
+        const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    
+        if(!isPasswordCorrect) throw new ApiError(401, "Old password is incorrect");
+    
+        user.password = newPassword;
+        await user.save();
+    
+        return res.status(200).json(new ApiResponse(200, "Password changed successfully."));
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while changing password", error);
+    }
+});
+
+/*
+Controller to change user avatar.
+Fetch avatar file from req.
+Validate if avatar file is present.
+Upload avatar to cloudinary and verify the upload.
+Fetch userId from req and update the avatar in users document.
+Return success response.
+*/
+const changeAvatar = asyncHandler(async (req, res) => {
+    try {
+        const avatarLocalPath = req.file?.path;
+        if (!avatarLocalPath) throw new ApiError(400, "Avatar file is required");
+    
+        const avatar = await uploadToCloudinary(avatarLocalPath)
+        if (!avatar) {
+            throw new ApiError(400, "Avatar file is required")
+        }
+    
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { avatar },
+            { new: true }
+        ).select("-password -refreshToken").lean();
+    
+        return res.status(200).json(new ApiResponse(200, "Avatar updated successfully"));
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while updating avatar", error);
+    }
+});
+
+/*Controller to change user cover image.
+Fetch cover image file from req.
+Validate if cover image file is present.
+Upload cover image to cloudinary and verify the upload.
+Fetch userId from req and update the cover image in users document.
+Return success response.
+*/
+const changeCoverImage = asyncHandler(async (req, res) => {
+    try {
+        const coverImageLocalFile = req.file?.path;
+        if (!coverImageLocalFile) throw new ApiError(400, "Avatar file is required");
+    
+        const coverImage = await uploadToCloudinary(coverImageLocalFile)
+        if (!coverImage) {
+            throw new ApiError(400, "CoverImage file is required")
+        }
+    
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { coverImage },
+            { new: true }
+        ).select("-password -refreshToken").lean();
+    
+        return res.status(200).json(new ApiResponse(200, "CoverImage updated successfully"));
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while updating cover image", error);
+    }
+});
+
+
 module.exports = {
         registerUser,
         login,
         logout,
+        refreshAccessToken,
+        getUserProfile,
+        changePassword,
+        changeAvatar,
+        changeCoverImage,
     }
