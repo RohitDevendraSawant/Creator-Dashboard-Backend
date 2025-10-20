@@ -7,7 +7,9 @@ const {
     changePassword,
     changeAvatar,
     changeCoverImage,
-    getUserProfile } = require('../controllers/user.controllers');
+    getUserProfile,
+    getUserWatchHistory,
+ } = require('../controllers/user.controllers');
 const upload = require("../middlewares/multer.middleware");
 const verifyToken = require("../middlewares/auth.middleware");
 
@@ -34,6 +36,8 @@ router.route("/user_profile").get(verifyToken, getUserProfile);
 router.route("/changePassword").post(verifyToken, changePassword);
 router.route("/changeavatar").post(upload.single("avatar"), verifyToken, changeAvatar);
 router.route("/changecoverimage").post(upload.single("cover_image"), verifyToken, changeCoverImage);
+router.route("/user_channel_details").get(verifyToken, getUserChannelDetails);
+router.route("/user_watch_history").get(verifyToken, getUserWatchHistory);
 
 
 module.exports = router;
