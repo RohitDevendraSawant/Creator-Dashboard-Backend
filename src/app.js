@@ -4,6 +4,7 @@ const cors = require('cors');
 const express = require('express');
 
 const userRouter = require("./routes/user.routes");
+const videoRouter = require("./routes/video.route");
 
 const app = express();
 
@@ -16,5 +17,6 @@ app.use(urlencoded({extended: true}));
 app.use(cookieParser());
 
 app.use("/api/user", userRouter);
+app.use("/api/video", videoRouter);
 
 module.exports = app;
