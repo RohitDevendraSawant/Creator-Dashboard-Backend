@@ -35,8 +35,8 @@ router.route("/logout").post(verifyToken, logout);
 router.route("/refreshToken").post(verifyToken, refreshAccessToken);
 router.route("/user_profile").get(verifyToken, getUserProfile);
 router.route("/changePassword").post(verifyToken, changePassword);
-router.route("/changeavatar").post(upload.single("avatar"), verifyToken, changeAvatar);
-router.route("/changecoverimage").post(upload.single("cover_image"), verifyToken, changeCoverImage);
+router.route("/changeavatar").post(verifyToken, upload.single("avatar"), changeAvatar);
+router.route("/changecoverimage").post(verifyToken, upload.single("cover_image"), changeCoverImage);
 router.route("/user_channel_details").get(verifyToken, getUserChannelDetails);
 router.route("/user_watch_history").get(verifyToken, getUserWatchHistory);
 
