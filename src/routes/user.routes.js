@@ -9,6 +9,7 @@ const {
     changeCoverImage,
     getUserProfile,
     getUserWatchHistory,
+    getUserChannelDetails,
  } = require('../controllers/user.controllers');
 const upload = require("../middlewares/multer.middleware");
 const verifyToken = require("../middlewares/auth.middleware");
